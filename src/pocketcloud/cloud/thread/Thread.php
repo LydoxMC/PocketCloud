@@ -75,6 +75,6 @@ abstract class Thread extends NativeThread {
     }
 
     public function getThreadName(): string {
-        return (new ReflectionClass($this))->getShortName();
+        return new ReflectionClass($this)->getShortName();
     }
 }

@@ -4,7 +4,7 @@ namespace pocketcloud\cloud\terminal\log\logger;
 
 use pocketcloud\cloud\terminal\log\level\CloudLogLevel;
 
-class PrefixedLogger extends Logger {
+final class PrefixedLogger extends Logger {
 
     public function __construct(
         private readonly Logger $logger,

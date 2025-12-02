@@ -57,7 +57,7 @@ class Logger {
             $args = implode(", ", array_map(function(mixed $argument): string {
                 if (is_object($argument)) {
                     try {
-                        return (new ReflectionClass($argument))->getShortName();
+                        return new ReflectionClass($argument)->getShortName();
                     } catch (ReflectionException) {
                         return get_class($argument);
                     }
@@ -92,13 +92,13 @@ class Logger {
             }
         } catch (ReflectionException) {}
 
+        $parsedMessage = count($params) > 0 ? sprintf($message, ...$params) : $message;
         $format = $this->usePrefix ?
             str_replace(
                 ["{thread}", "{time}", "{time_with_ms}", "{log_level}", "{message}"],
-                [$threadName, $time->format("H:i:s"), $time->format("H:i:s.v"), $logLevel->getPrefix(), sprintf($message, ...$params)],
+                [$threadName, $time->format("H:i:s"), $time->format("H:i:s.v"), $logLevel->getPrefix(), $parsedMessage],
                 $this->format
-            ) :
-            "§r" . sprintf($message, ...$params);
+            ) : "§r" . $parsedMessage;
         $line = CloudColor::toColoredString($format) . "\n";
 
         if (($setup = Setup::getCurrentSetup()) !== null && $setup->getLogger() === $this) echo $line;
