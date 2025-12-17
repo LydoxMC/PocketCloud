@@ -8,6 +8,7 @@ use pocketcloud\cloud\command\argument\exception\ArgumentParseException;
 use pocketcloud\cloud\command\argument\CommandArgument;
 use pocketcloud\cloud\command\sender\ICommandSender;
 use pocketcloud\cloud\terminal\log\CloudLogger;
+use pocketcloud\cloud\util\promise\Promise;
 
 abstract class Command {
 
@@ -41,8 +42,8 @@ abstract class Command {
                     $arg = $currentParameter->parseValue($multiString ? implode(" ", array_slice($args, $i)) : $args[$i]);
                     $parsedArgs[$currentParameter->getName()] = $arg;
                     if ($multiString) break;
-                } catch (ArgumentParseException) {
-                    CloudLogger::get()->warn($currentParameter->getCustomErrorMessage() ?? $this->getUsage());
+                } catch (ArgumentParseException $exception) {
+                    CloudLogger::get()->warn($currentParameter->getCustomErrorMessage() ?? $exception->getMessage());
                     return;
                 }
             } else {
@@ -58,6 +59,12 @@ abstract class Command {
     }
 
     abstract public function run(ICommandSender $sender, string $label, array $args): bool;
+
+    final public function waitForConfirmation(ICommandSender $sender, string $prompt, array $keywordsAccept, array $keywordsDecline): Promise {
+        $sender->info($prompt . " §8(§rType §8'§a%s§8' §rto §aproceed§r, type §8'§c%s§8' §rto §ccancel§r.§8)", implode("§8, §a", $keywordsAccept), implode("§8, §c", $keywordsDecline));
+        CommandManager::getInstance()->addConfirmation($this, $keywordsAccept, $keywordsDecline, $promise = new Promise());
+        return $promise;
+    }
 
     private function buildUsageMessage(): string {
         $usage = $this->getName();

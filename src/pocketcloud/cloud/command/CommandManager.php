@@ -24,11 +24,16 @@ use pocketcloud\cloud\command\impl\template\RemoveCommand;
 use pocketcloud\cloud\command\impl\VersionCommand;
 use pocketcloud\cloud\command\impl\web\WebAccountCommand;
 use pocketcloud\cloud\command\sender\ICommandSender;
+use pocketcloud\cloud\PocketCloud;
+use pocketcloud\cloud\util\promise\Promise;
 use pocketcloud\cloud\util\SingletonTrait;
+use pocketcloud\cloud\util\tick\Tickable;
 
-final class CommandManager {
+final class CommandManager implements Tickable {
     use SingletonTrait;
 
+    /** @var array<Promise> */
+    private array $confirmationPromises = [];
     /** @var array<Command> */
     private array $commands = [];
 
@@ -63,13 +68,45 @@ final class CommandManager {
         $this->register(new GroupCommand());
     }
 
+    public function tick(int $currentTick): void {
+        if (empty($this->confirmationPromises)) return;
+        foreach ($this->confirmationPromises as $cmd => $data) {
+            [, $expireTick, $promise] = $data;
+            if ($expireTick <= PocketCloud::getInstance()->getTick()) {
+                $promise->reject();
+                unset($this->confirmationPromises[$cmd]);
+            }
+        }
+    }
+
     public function handleInput(ICommandSender $sender, string $input): bool {
         $args = explode(" ", $input);
         $name = array_shift($args);
+
+        if (count($this->confirmationPromises) > 0) {
+            [$name, , $promise, $keywordsAccept, $keywordsDecline] = current($this->confirmationPromises);
+            if (in_array(strtolower($input), $keywordsAccept)) {
+                $promise->resolve(true);
+                unset($this->confirmationPromises[$name]);
+                return true;
+            } else if (in_array(strtolower($input), $keywordsDecline)) {
+                $promise->resolve(false);
+                unset($this->confirmationPromises[$name]);
+                return true;
+            }
+
+            $sender->warn("§cPlease do the confirmation before you enter a new command.");
+            return false;
+        }
+
         if (($command = $this->get($name)) === null) return false;
 
         $command->handle($sender, $name, $args);
         return true;
+    }
+
+    public function addConfirmation(Command $command, array $keywordsAccept, array $keywordsDecline, Promise $promise): void {
+        $this->confirmationPromises[$command->getName()] = [$command->getName(), PocketCloud::getInstance()->getTick() + (20 * 10), $promise, $keywordsAccept, $keywordsDecline];
     }
 
     public function register(Command $command): void {

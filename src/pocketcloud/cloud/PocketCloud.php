@@ -3,6 +3,7 @@
 namespace pocketcloud\cloud;
 
 use Phar;
+use pocketcloud\cloud\command\CommandManager;
 use pocketcloud\cloud\config\impl\MainConfig;
 use pocketcloud\cloud\event\EventManager;
 use pocketcloud\cloud\event\impl\cloud\CloudStartedEvent;
@@ -147,6 +148,7 @@ final class PocketCloud {
         TickableList::add(CloudServerManager::getInstance());
         TickableList::add(TemplateManager::getInstance());
         TickableList::add(ServerClientCache::getInstance());
+        TickableList::add(CommandManager::getInstance());
 
         $this->network->init();
 
