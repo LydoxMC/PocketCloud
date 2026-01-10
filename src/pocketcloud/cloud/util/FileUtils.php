@@ -85,7 +85,7 @@ final class FileUtils {
 
     public static function unlinkFile(string $filePath): bool {
         return ExceptionHandler::tryCatch(
-            fn() => unlink($filePath),
+            fn() => @unlink($filePath),
             "Failed to unlink file: " . $filePath
         ) ?? false;
     }
